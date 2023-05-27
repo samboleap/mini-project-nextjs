@@ -5,13 +5,6 @@ import Categories from './category/page'
 import { Suspense } from 'react'
 import Loading from './components/Loading'
 
-
-export const metadata = {
-  title: 'Samboleap - Home',
-  description: 'Listing All Information',
-}
-
-
 export default function Home() {
   return (
     <>
