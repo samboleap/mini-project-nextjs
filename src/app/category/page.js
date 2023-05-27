@@ -2,17 +2,10 @@ import React from 'react'
 import { BASE_URL } from '../utils/constant';
 import CategoryCard from '../components/CategoryCard';
 
-
-export const metadata = {
-  title: 'Samboleap - Category',
-  description: 'Listing All Categories',
-}
-
 async function fetchCategories() {
   const items = await fetch(`${BASE_URL}categories?limit=12`, { cache: "no-store" })
   return items.json()
 }
-
 
 export default async function Categories() {
   const cates = await fetchCategories()

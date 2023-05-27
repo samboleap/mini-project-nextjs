@@ -2,12 +2,6 @@ import Link from 'next/link'
 import { BASE_URL } from '../utils/constant'
 import ProductsCard from '../components/ProductsCard'
 
-
-export const metadata = {
-  title: 'Samboleap - Product',
-  description: 'Listing All Products',
-}
-
 async function fetchProducts() {
   const resp = await fetch(`${BASE_URL}products?limit=20&offset=10`, { caches: "no-store" })
   return resp.json()
