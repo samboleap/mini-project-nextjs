@@ -7,15 +7,31 @@ import * as Yup from 'yup'
 import { BASE_URL } from "../utils/constant";
 import Link from "next/link";
 import React from 'react'
-import Categories from "../category/page";
 
 
+async function getCategories(){
+    const cates = await fetch(`${BASE_URL}categories` ,{cache: "no-store"});
+    return cates.json()
+}
 
 export default function AddProducts() {
 
     // const router = useRouter()
+    const [cates, setCategory] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [imageURL, setImageURL] = useState("");
+
+    useEffect(()=> {
+        const getCategory = async () =>{
+            try{const data = await getCategories();
+            setCategory(data);
+            setIsLoading(false);
+            }catch(err){
+            console.log(err)
+        }
+    };
+    getCategory();
+    }, []);
     
     const FILE_SIZE = 1024 * 1024 * 10; // 10MB
     const SUPPORTED_FORMATS = ["image/jpg", "image/jpeg", "image/gif", "image/png"];
@@ -25,7 +41,9 @@ export default function AddProducts() {
         price: Yup.string().required("Require price"),
         description: Yup.string().required("Require description"),
         categoryId: Yup.number().integer().required("Require category"),
-        images: Yup.mixed().test("fileSize", "Image too large", (value) => {
+        images: Yup.array().of(
+        
+        Yup.mixed().test("fileSize", "Image too large", (value) => {
             console.log("value", value);
             if (!value) {
                 return true
@@ -36,17 +54,21 @@ export default function AddProducts() {
                 return true
             }
             return SUPPORTED_FORMATS.includes(value.type);
-        }).required("Required")
+        })
+        )
+        .required("Required")
     })
     const uploadImage = async (values) => {
         try {
-            const response = await axios.post(
-                `${BASE_URL}images/upload`,
-                values.images
-            );
-            console.log(response);
-            setIsLoading(false);
-            return response.data.location;
+
+            const uploadPromises = values.map(async (image)=>{
+                const response = await axios.post(`${BASE_URL}images/upload`, image);
+                console.log(response);
+                return response.data.location;
+            });
+            const uploadedImageUrls = await Promise.all(uploadPromises);
+    console.log(uploadedImageUrls);
+    return uploadedImageUrls;
         } catch (error) {
             console.log(error.message);
             alert(error.message)
@@ -57,18 +79,18 @@ export default function AddProducts() {
         let { title, price, description, categoryId, images } = data
         let myHeaders = new Headers();
         myHeaders.append("Content-Type", "application/json");
-        const userData = JSON.stringify({
+        const productData = JSON.stringify({
             title,
             price,
             description,
             categoryId,
-            images
-        })
+            images: [images]
+        });
 
         let requestData = {
             method: "POST",
             headers: myHeaders,
-            body: userData,
+            body: productData,
         }
 
         const resp = await fetch(`${BASE_URL}products`, requestData)
@@ -87,7 +109,7 @@ export default function AddProducts() {
 
                 }}
                 validationSchema={validateSchema}
-                onSubmit={async (values, { setSubmitting }) => {
+                onSubmit={async (values, { setSubmitting ,resetFrom}) => {
                     const formData = new FormData();
                     formData.append("images", values.images);
                     const images = await uploadImage({ images: formData });
@@ -97,7 +119,7 @@ export default function AddProducts() {
 
                     setTimeout(() => {
                         // alert(JSON.stringify(values, null, 2));
-                        insertProduct(values)
+                        insertProduct(values, resetFrom)
                             .then(resp => { alert("Successfully insert Product") })
                         setSubmitting(false);
                     }, 1000);
@@ -108,8 +130,8 @@ export default function AddProducts() {
                         <section className="bg-gray-50 dark:bg-gray-900 mt-20">
                             <div className="flex flex-col items-center justify-center px-6 py-8 mx-auto md:h-screen lg:py-0">
                                 <Link href="/" className="flex items-center mb-6 text-2xl font-semibold text-gray-900 dark:text-white">
-                                    <img className="w-8 h-8 mr-2" src="https://flowbite.s3.amazonaws.com/blocks/marketing-ui/logo.svg" alt="logo" />
-                                    ISTAD
+                                    <img className="w-8 h-8 mr-2" src="./images/logo-no-background.png" alt="logo" />
+                                    SBL Company
                                 </Link>
 
                                 <div className="w-full bg-white rounded-lg shadow dark:border md:mt-0 sm:max-w-md xl:p-0 dark:bg-gray-800 dark:border-gray-700">
@@ -160,11 +182,11 @@ export default function AddProducts() {
                                                 >
                                                     <option value="categories" disabled>Choose a category</option>
 
-                                                   {/*  { cates.map((cate) => ( 
+                                                    { cates.map((cate) => ( 
                                                         <option key={cate.id} value={cate.id}>
                                                             {cate.name}
                                                         </option>
-                                                    ))} */}
+                                                    ))}
 
                                                 </Field>
                                                 <ErrorMessage
@@ -200,8 +222,7 @@ export default function AddProducts() {
                                             <button
                                                 disabled={isSubmitting}
                                                 type="submit" class="text-white w-full bg-[#2557D6] hover:bg-[#2557D6]/90 focus:ring-4 focus:ring-[#2557D6]/50 focus:outline-none font-medium rounded-lg text-sm px-5 py-2.5 text-center inline-flex items-center dark:focus:ring-[#2557D6]/50 mr-2 mb-2">
-                                                <svg aria-hidden="true" class="w-10 h-3 mr-2 -ml-1" viewBox="0 0 256 64" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M28.812 0L0 63.76H34.492L38.768 53.594H48.542L52.818 63.76H90.784V56.001L94.167 63.76H113.806L117.189 55.837V63.76H196.148L205.749 53.858L214.739 63.76L255.294 63.842L226.391 32.058L255.294 0H215.368L206.022 9.71899L197.315 0H111.418L104.042 16.457L96.493 0H62.073V7.495L58.244 0C58.244 0 28.812 0 28.812 0ZM35.486 9.05399H52.299L71.41 52.29V9.05399H89.828L104.589 40.054L118.193 9.05399H136.519V54.806H125.368L125.277 18.955L109.02 54.806H99.045L82.697 18.955V54.806H59.757L55.408 44.549H31.912L27.572 54.797H15.281C15.281 54.797 35.486 9.05399 35.486 9.05399ZM146.721 9.05399H192.063L205.931 24.034L220.246 9.05399H234.114L213.043 32.049L234.114 54.779H219.617L205.749 39.625L191.361 54.779H146.721V9.05399ZM43.665 16.795L35.924 35.067H51.397L43.665 16.795ZM157.918 18.527V26.879H182.654V36.188H157.918V45.306H185.663L198.555 31.876L186.21 18.519H157.918V18.527Z" fill="white" /></svg>
-                                                Create user with formik - ISTAD
+                                                Insert Product - SBL Company
                                             </button>
 
                                         </Form>
